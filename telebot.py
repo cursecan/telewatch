@@ -192,7 +192,7 @@ class Pulsabot(telepot.helper.ChatHandler):
                     )
             else :
                 self.sender.sendMessage(
-                    'Gagal diproses, harap masukan nomor anda dengan benar.'
+                    'Transaksi gagal, request timeout..'
                 )
             
             self._cancel_last_button()
@@ -300,7 +300,7 @@ class Pulsabot(telepot.helper.ChatHandler):
                     )
             else :
                 self.sender.sendMessage(
-                    'Gagal diproses, harap masukan nomor anda dengan benar.'
+                    'Transaksi gagal, request timeout..'
                 )
             
             self._cancel_last_button()
@@ -408,7 +408,7 @@ class Pulsabot(telepot.helper.ChatHandler):
                     )
             else :
                 self.sender.sendMessage(
-                    'Gagal diproses, harap masukan nomor anda dengan benar.'
+                    'Transaksi gagal, request timeout..'
                 )
             
             self._cancel_last_button()
