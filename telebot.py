@@ -11,8 +11,8 @@ from telepot.delegate import (
     per_chat_id, create_open, pave_event_space, include_callback_query_chat_id)
 
 tele_records = telepot.helper.SafeDict()
-TOKEN = '528057329:AAFBShP7yaoh2ZgOl0Fg4Fzipw1kYitx9Iw'
-_URL = 'http://127.0.0.1:8000/api/'
+TOKEN = '622894517:AAE_GWZOy9mE1hqs3T1olN-I8HEmfxyBaK8'
+_URL = 'http://website.com:8000/api/'
 
 def splitKeyboard(keyboard, q=2):
     return [keyboard[i*q:(i+1)*q] for i in range((len(keyboard)//q)+1)]
@@ -55,6 +55,9 @@ class Pulsabot(telepot.helper.ChatHandler):
                 ],
                 [
                     InlineKeyboardButton(text='E-TRANSPORT', callback_data='ETRANS'),
+                ],
+                [
+                    InlineKeyboardButton(text='LISTRIK PRABAYAR', callback_data='TOKEN'),
                 ]
             ]
         )
@@ -94,6 +97,28 @@ class Pulsabot(telepot.helper.ChatHandler):
                 parse_mode='HTML'
             )
             return False
+
+
+    # GET PRODUK TOKEN LISTRIK
+    def _getListrikProduct(self, operator='1'):
+        url = _URL + 'listrik/product/?op=' + str(operator)
+        try :
+            r = requests.get(url=url, headers={'Authorization': self.token_id, 'Content-Type': 'application/json'})
+            if r.status_code == requests.codes.ok:
+                rson = r.json()
+                keyboard = InlineKeyboardMarkup(
+                    inline_keyboard=splitKeyboard(
+                        [InlineKeyboardButton(text=i['title'], callback_data='listrik_prod#' + str(i['id'])) for i in rson]
+                    ) + [[InlineKeyboardButton(text='BACK', callback_data='BACK')]]
+                )
+                
+                self.keyboard.append(keyboard)
+
+                text = self.bot.editMessageReplyMarkup(self._edit_msg_ident, reply_markup=keyboard)
+                self._editor = telepot.helper.Editor(self.bot, text)
+                self._edit_msg_ident = telepot.message_identifier(text)
+        except:
+            pass
         
 
 
@@ -378,6 +403,26 @@ class Pulsabot(telepot.helper.ChatHandler):
         except:
             pass
 
+    
+    # GET LISTRIK DETAIL PRODUCT
+    def _detailListrik(self, product):
+        url = _URL + 'listrik/product/' + product + '/'
+        self._cancel_last_info()
+
+        try:
+            r = requests.get(url=url, headers={'Authorization': self.token_id, 'Content-Type': 'application/json'})
+            if r.status_code == requests.codes.ok:
+                rson = r.json()
+
+                text = self.sender.sendMessage('<strong>{}</strong>\n{}'.format(rson['description'], rson['addinfo']), parse_mode='HTML')
+                
+                self.product = 'listrik#' + rson['product_code']
+
+                self.editor_info = telepot.helper.Editor(self.bot, text)
+                self.edit_msg_info = telepot.message_identifier(text)
+        except:
+            pass
+
 
     # POST TRANSPORT
     def _postInTransport(self, product_code, phone):
@@ -420,6 +465,63 @@ class Pulsabot(telepot.helper.ChatHandler):
         finally :
             self.product = ''
             self.idpel = ''
+
+
+    # POST LISTRIK
+    def _postInListrik(self, product_code, phone):
+        url = _URL + 'listrik/topup/'
+        payload = {
+            'product_code': product_code,
+            'phone': phone,
+        }
+        try :
+            r = requests.post(
+                url = url,
+                data = json.dumps(payload),
+                headers = {'Authorization': self.token_id, 'Content-Type': 'application/json'}
+            )
+            if r.status_code == requests.codes.ok:
+                rson = r.json()
+                if rson['status']['code'] == '00':
+                    self.sender.sendMessage(
+                        'No. {}\nPembelian <strong>{}</strong> pada Nomor <strong>{}</strong> harga <strong>Rp {:0,.0f}</strong> sedang diproses.'.format(
+                            rson['trx']['trx_code'], rson['product']['title'], rson['trx']['phone'], rson['product']['price']
+                        ),
+                        parse_mode='HTML',
+                    )
+                    url = _URL + 'listrik/trx/{}/'.format(rson['trx']['id'])
+                    r = requests.get(
+                        url = url,
+                        headers = {'Authorization': self.token_id, 'Content-Type': 'application/json'}
+                    )
+                    if r.status_code == requests.codes.ok:
+                        rson = r.json()
+                        struk = rson['detail_res']
+
+                        self.sender.sendMessage(
+                            '<pre>{}</pre>'.format(struk),
+                            parse_mode = 'HTML'
+                        )
+
+                else : 
+                    self.sender.sendMessage(
+                        'Transaksi gagal.\n'+rson['status']['description']
+                    )
+            else :
+                self.sender.sendMessage(
+                    'Transaksi gagal, request timeout..'
+                )
+            
+            self._cancel_last_button()
+            self._main()
+        
+        except :
+            pass
+
+        finally :
+            self.product = ''
+            self.idpel = ''
+
 
     # DELETE/MOD LAST INFO TEXT
     def _cancel_last_info(self):
@@ -599,6 +701,28 @@ class Pulsabot(telepot.helper.ChatHandler):
 
                 self.postValidation(msg['text'])
                 return
+
+            
+            if 'listrik' in self.product :
+                if msg['text'] == 'Ya' and self.idpel != '':
+                    self.confirm = True
+                    prod, code = self.product.split('#')
+                    self._postInListrik(code, self.idpel)
+                    return
+
+                elif msg['text'] == 'Tidak' and self.idpel != '' :
+                    self.confirm = False
+                    self.product = ''
+                    self.idpel = ''
+                    self.sender.sendMessage(
+                        'Permintaan Anda telah dibatalkan.\n<strong>Ketik</strong> /menu untuk kembali ke menu utama.',
+                        parse_mode = 'HTML'
+                    )
+                    self._main()
+                    return
+
+                self.postValidation(msg['text'])
+                return
             
             
             if msg['text'] == '/menu':
@@ -646,6 +770,8 @@ class Pulsabot(telepot.helper.ChatHandler):
             self._getTransportOperator()
             return
 
+    
+
         # OPERATOR PULSA
         if 'pulsa_op' in query_data:
             op, ids = query_data.split('#')
@@ -662,6 +788,11 @@ class Pulsabot(telepot.helper.ChatHandler):
         if 'transport_op' in query_data:
             op, ids = query_data.split('#')
             self._getTransportProduct(ids)
+            return
+
+        # LISTRIK TOKEN
+        if query_data == 'TOKEN':
+            self._getListrikProduct('1')
             return
         
         # PRODUCT PULSA
@@ -680,6 +811,12 @@ class Pulsabot(telepot.helper.ChatHandler):
         if 'transport_prod' in query_data:
             prod, ids = query_data.split('#')
             self._detailTransport(ids)
+            return
+
+        # PRODUCT LISTRIK
+        if 'listrik_prod' in query_data:
+            prod, ids = query_data.split('#')
+            self._detailListrik(ids)
             return
 
     def on_close(self, ex):
