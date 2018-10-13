@@ -49,16 +49,12 @@ class Pulsabot(telepot.helper.ChatHandler):
             inline_keyboard=[
                 [
                     InlineKeyboardButton(text='DATA & PULSA', callback_data='DAPUL'),
-                ],
-                [
                     InlineKeyboardButton(text='GAME ONLINE', callback_data='GAME'),
                 ],
                 [
                     InlineKeyboardButton(text='E-TRANSPORT', callback_data='ETRANS'),
-                ],
-                [
                     InlineKeyboardButton(text='LISTRIK PRABAYAR', callback_data='TOKEN'),
-                ]
+                ],
             ]
         )
         self.keyboard = [keyboard]
@@ -188,6 +184,7 @@ class Pulsabot(telepot.helper.ChatHandler):
             pass
 
 
+
     # POST PULSA
     def _postInPulsa(self, product_code, phone):
         url = _URL + 'pulsa/topup/'
@@ -202,19 +199,8 @@ class Pulsabot(telepot.helper.ChatHandler):
                 headers = {'Authorization': self.token_id, 'Content-Type': 'application/json'}
             )
             if r.status_code == requests.codes.ok:
-                rson = r.json()
-                if rson['status']['code'] == '00':
-                    self.sender.sendMessage(
-                        'No. {}\nPembelian <strong>{}</strong> pada Nomor <strong>{}</strong> harga <strong>Rp {:0,.0f}</strong> sedang diproses.'.format(
-                            rson['trx']['trx_code'], rson['product']['title'], rson['trx']['phone'], rson['product']['price']
-                        ),
-                        parse_mode='HTML',
-                    )
+                self.feedBackInAction(r)
 
-                else : 
-                    self.sender.sendMessage(
-                        'Transaksi gagal.\n'+rson['status']['description']
-                    )
             else :
                 self.sender.sendMessage(
                     'Transaksi gagal, request timeout..'
@@ -310,19 +296,8 @@ class Pulsabot(telepot.helper.ChatHandler):
                 headers = {'Authorization': self.token_id, 'Content-Type': 'application/json'}
             )
             if r.status_code == requests.codes.ok:
-                rson = r.json()
-                if rson['status']['code'] == '00':
-                    self.sender.sendMessage(
-                        'No. {}\nPembelian <strong>{}</strong> pada Nomor <strong>{}</strong> harga <strong>Rp {:0,.0f}</strong> sedang diproses.'.format(
-                            rson['trx']['trx_code'], rson['product']['title'], rson['trx']['phone'], rson['product']['price']
-                        ),
-                        parse_mode='HTML',
-                    )
+                self.feedBackInAction(r)
 
-                else : 
-                    self.sender.sendMessage(
-                        'Transaksi gagal.\n'+rson['status']['description']
-                    )
             else :
                 self.sender.sendMessage(
                     'Transaksi gagal, request timeout..'
@@ -438,19 +413,8 @@ class Pulsabot(telepot.helper.ChatHandler):
                 headers = {'Authorization': self.token_id, 'Content-Type': 'application/json'}
             )
             if r.status_code == requests.codes.ok:
-                rson = r.json()
-                if rson['status']['code'] == '00':
-                    self.sender.sendMessage(
-                        'No. {}\nPembelian <strong>{}</strong> pada Nomor <strong>{}</strong> harga <strong>Rp {:0,.0f}</strong> sedang diproses.'.format(
-                            rson['trx']['trx_code'], rson['product']['title'], rson['trx']['phone'], rson['product']['price']
-                        ),
-                        parse_mode='HTML',
-                    )
+                self.feedBackInAction(r)
 
-                else : 
-                    self.sender.sendMessage(
-                        'Transaksi gagal.\n'+rson['status']['description']
-                    )
             else :
                 self.sender.sendMessage(
                     'Transaksi gagal, request timeout..'
@@ -484,8 +448,8 @@ class Pulsabot(telepot.helper.ChatHandler):
                 rson = r.json()
                 if rson['status']['code'] == '00':
                     self.sender.sendMessage(
-                        'No. {}\nPembelian <strong>{}</strong> pada Nomor <strong>{}</strong> harga <strong>Rp {:0,.0f}</strong> sedang diproses.'.format(
-                            rson['trx']['trx_code'], rson['product']['title'], rson['trx']['phone'], rson['product']['price']
+                        'No. {}\nPembelian <b>{}</b> pada Nomor <b>{}</b> harga <b>Rp {:0,.0f}</b> sedang diproses. Saldo Anda saat ini menjadi <b>Rp {:0,.0f}</b>'.format(
+                            rson['trx']['trx_code'], rson['product']['title'], rson['trx']['phone'], rson['product']['price'], rson['saldo']
                         ),
                         parse_mode='HTML',
                     )
@@ -581,6 +545,22 @@ class Pulsabot(telepot.helper.ChatHandler):
                 resize_keyboard = True,
             )
         )
+
+    
+    def feedBackInAction(self, r):
+        rson = r.json()
+        if rson['status']['code'] == '00':
+            self.sender.sendMessage(
+                'No. {}\nPembelian <b>{}</b> pada Nomor <b>{}</b> harga <b>Rp {:0,.0f}</b> sedang diproses. Saldo Anda saat ini menjadi <b>Rp {:0,.0f}</b>'.format(
+                    rson['trx']['trx_code'], rson['product']['title'], rson['trx']['phone'], rson['product']['price'], rson['saldo']
+                ),
+                parse_mode='HTML',
+            )
+
+        else : 
+            self.sender.sendMessage(
+                'Transaksi gagal.\n'+rson['status']['description']
+            )
 
 
     # SITE STATUS IN ACTIVE OR MAINTENANCE
